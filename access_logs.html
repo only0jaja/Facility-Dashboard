@@ -11,7 +11,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/bootstrap.min.css">
-    <title>ROOMS</title>
+    <title>ACCESS LOGS</title>
 </head>
 
 <body>
@@ -50,13 +50,13 @@
             </li>
 
             <li class="nav-item">
-                <a class="nav-link active" href="rooms.html">
+                <a class="nav-link" href="rooms.html">
                     <i class="fas fa-door-open"></i> Rooms
                 </a>
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="access_logs.html">
+                <a class="nav-link active" href="access_logs.html">
                     <i class="fas fa-list"></i> Access Logs
                 </a>
             </li>
@@ -78,80 +78,85 @@
     </div>
     <!-- REUSABLE UNTIL HERE PARA SA SIDE BAR -->
     <div class="main-content p-4">
-
         <!-- Header -->
         <div class="card shadow-sm mb-4">
             <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                <h3 class="fw-bold mb-0">Rooms</h3>
+                <h3 class="fw-bold mb-0">Access Logs </h3>
 
                 <div class="input-group room-search">
                     <span class="input-group-text bg-white">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search Room">
+                    <input type="text" class="form-control" placeholder="Search by Log ID, User ID, RFID, Room...">
                 </div>
             </div>
         </div>
 
-        <div class="d-flex flex-wrap align-items-center mb-4 gap-2">
-            <ul class="nav nav-pills border-0" id="roomFilters" role="tablist" style="background: none;">
-                <li class="nav-item" role="presentation">
-                    <button class="filter active nav-link border-0 custom-pill" data-bs-toggle="pill" data-bs-target="#all"
-                        type="button">
-                        All Rooms
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="filter nav-link border-0 custom-pill" data-bs-toggle="pill" data-bs-target="#unoccupied"
-                        type="button">
-                        <i class="fas fa-circle text-success"></i> Unoccupied
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="filter nav-link border-0 custom-pill" data-bs-toggle="pill" data-bs-target="#occupied"
-                        type="button">
-                        <i class="fas fa-circle text-danger"></i> Occupied
-                    </button>
-                </li>
-            </ul>
+        <!-- FILTER -->
+        <div class="card shadow-sm">
+            <div class="card-body">
 
-            <button class="main-btn ms-md-auto">
-                <i class="fas fa-plus"></i> Add New Room
-            </button>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-lg-6">
-                <div class="room-card occupied">
-                    <div class="room-card-header">
-                        <h5>ROOM101</h5>
-                        <span class="badge bg-danger">Occupied</span>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <select class="form-select w-auto">
+                            <option selected>All Status</option>
+                        </select>
+                        <select class="form-select w-auto">
+                            <option selected>All Rooms</option>
+                        </select>
+                        <select class="form-select w-auto">
+                            <option selected>All Access Type</option>
+                        </select>
+                        <button class="btn btn-secondary px-4">Clear Filters</button>
                     </div>
-                    <p class="mb-3">
-                        <i class="fas fa-school"></i> Type: CLASSROOM
-                    </p>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fas fa-trash"></i> Delete
+                    <button class="print">
+                        <i class="fas fa-print me-2"></i>Print
                     </button>
                 </div>
-            </div>
 
-            <div class="col-lg-6">
-                <div class="room-card unoccupied">
-                    <div class="room-card-header">
-                        <h5>ROOM102</h5>
-                        <span class="badge bg-success">Unoccupied</span>
-                    </div>
-                    <p class="mb-3">
-                        <i class="fas fa-school"></i> Type: CLASSROOM
-                    </p>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                <h4 class="fw-bold mb-3">Access logs</h4>
+
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Log_id</th>
+                                <th>User_id</th>
+                                <th>Role</th>
+                                <th>Room</th>
+                                <th>Access_time</th>
+                                <th>Access_type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <tr>
+                                <td>408</td>
+                                <td>8</td>
+                                <td>Admin</td>
+                                <td>ROOM101</td>
+                                <td>2025-10-23 14:11:33</td>
+                                <td>Entry</td>
+                                <td><span
+                                        class="status granted">Granted</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
+
+
+
+
+
+
+
+
+
+
 
 
 
