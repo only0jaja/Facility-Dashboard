@@ -35,6 +35,21 @@ body {
 .main-btn:hover {
     background: var(--hover-color);
 }
+/* Filter Clear Button */
+.secondary-btn {
+    background: #5a5a5a;
+    color: var(--text-color);
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.secondary-btn:hover {
+    background: #4b4b4b;
+}
 
 /* CUSTOM BUTTONS */
 
@@ -77,7 +92,7 @@ body {
 
 .sidebar-menu .nav-link:hover,
 .sidebar-menu .nav-link.active {
-    background: #005ce6;
+    background: var(--hover-color);
     color: var(--text-color);
 }
 
@@ -112,7 +127,7 @@ body {
 
 /* SIDEBAR ----------------------------------------------------------------- */
 /* DASHBOARD ----------------------------------------------------------------- */
-/* Main content spacing (for sidebar) */
+/* MAIN CONTENT */
 .main-content {
     margin-left: 250px;
     background: var(--text-color);
@@ -200,7 +215,7 @@ td {
 
 /* DASHBOARD ----------------------------------------------------------------- */
 /* USER PAGE ----------------------------------------------------------------- */
-/* Nav Pills Styling */
+/* NAVIGATION PILLS */
 .custom-pill {
     color: #64748b !important;
     font-weight: 600;
@@ -224,7 +239,7 @@ td {
 }
 /* USER PAGE ----------------------------------------------------------------- */
 /* ROOMS PAGE ----------------------------------------------------------------- */
-/* Search input */
+/* SEARCH INPUT FOR ALL PAGES SA HEADER */
 .room-search {
     max-width: 300px;
 }
@@ -244,15 +259,13 @@ td {
 }
 
 .filter {
-    padding: 12px 24px;
-    border: 2px solid #e1e5e9;
-    border-radius: 8px;
-    background: white;
-    color: #495057;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    padding: 12px 24px !important;
+    border: 2px solid #e1e5e9 !important;
+    border-radius: 8px !important;
+    color: #495057 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
 }
 
 
@@ -278,7 +291,7 @@ td {
     margin: 0;
 }
 
-/* Responsive fix */
+/* Responsive */
 @media (max-width: 768px) {
     .room-search {
         max-width: 100%;
@@ -287,26 +300,6 @@ td {
 
 /* ROOMS PAGE ----------------------------------------------------------------- */
 /* ACCESS_LOGS PAGE ----------------------------------------------------------------- */
-
-/* Container adjustments */
-.main-content {
-    background-color: #f8f9fa;
-    min-height: 100vh;
-}
-
-/* Search Bar styling */
-.search-container .form-control:focus {
-    box-shadow: none;
-    border-color: #dee2e6;
-}
-
-/* Custom Select styling */
-.custom-select { 
-    width: auto;
-    min-width: 140px;
-    border-radius: 8px;
-}
-
 .print {
     background: #28a745;
     color: var(--text-color);
@@ -323,20 +316,12 @@ td {
     background: #218838;
 }
 
-/* Filter Clear Button */
-.btn-secondary {
-    background-color: #6c757d;
-    border-radius: 8px;
-}
-
 /* Table styling */
 .table thead th {
     font-size: 0.9rem;
     padding: 15px !important;
     border-top: none;
 }
-
-
 
 .table tbody td {
     padding: 12px 15px;
@@ -351,22 +336,6 @@ td {
     display: inline-block;
 }
 
-.status-granted {
-    background-color: #d1e7dd;
-    color: #198754;
-    border: 1px solid #badbcc;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .custom-select {
-        width: 100%;
-    }
-    
-    .search-container {
-        max-width: 100%;
-    }
-}
 /* ACCESS_LOGS PAGE ----------------------------------------------------------------- */
 /* SCHEDULE PAGE ----------------------------------------------------------------- */
 .sched-thead th{
