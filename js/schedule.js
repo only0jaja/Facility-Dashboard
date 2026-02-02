@@ -1,4 +1,5 @@
-// js/schedule.js - Complete schedule functionality in one file
+// js/schedule.js - UPDATED VERSION
+console.log('Schedule module loaded - UPDATED');
 
 // Global variables
 let scheduleModal = null;
@@ -12,221 +13,287 @@ let currentFilters = {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing schedule system...');
+    
     // Initialize Bootstrap modal
     scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
     
-    // Setup all event listeners
+    // Setup event listeners
     setupEventListeners();
     
     // Load initial schedules
     loadSchedules();
+    
+    console.log('Schedule system ready');
 });
 
-// Setup all event listeners
+// Helper: parse response as JSON but fall back to text for debugging
+function parseJsonSafe(response) {
+    return response.text().then(text => {
+        try {
+            const json = JSON.parse(text);
+            return { ok: true, data: json };
+        } catch (e) {
+            return { ok: false, data: null, text };
+        }
+    });
+}
+
+// Setup event listeners
 function setupEventListeners() {
     // Search button
-    const searchBtn = document.getElementById('searchBtn');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', function() {
-            currentFilters.search = document.getElementById('searchInput').value;
-            loadSchedules();
-        });
-    }
+    document.getElementById('searchBtn').addEventListener('click', function() {
+        currentFilters.search = document.getElementById('searchInput').value;
+        loadSchedules();
+    });
     
     // Search input (Enter key)
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                currentFilters.search = this.value;
-                loadSchedules();
-            }
-        });
-        
-        // Debounced search (live search as you type)
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                currentFilters.search = this.value;
-                loadSchedules();
-            }, 500);
-        });
-    }
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            currentFilters.search = this.value;
+            loadSchedules();
+        }
+    });
+    
+    // Search input real-time filtering
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentFilters.search = this.value;
+            loadSchedules();
+        }, 500);
+    });
     
     // Filter change listeners
-    document.getElementById('courseFilter')?.addEventListener('change', function() {
+    document.getElementById('courseFilter').addEventListener('change', function() {
         currentFilters.course = this.value;
         loadSchedules();
     });
     
-    document.getElementById('dayFilter')?.addEventListener('change', function() {
+    document.getElementById('dayFilter').addEventListener('change', function() {
         currentFilters.day = this.value;
         loadSchedules();
     });
     
-    document.getElementById('facultyFilter')?.addEventListener('change', function() {
+    document.getElementById('facultyFilter').addEventListener('change', function() {
         currentFilters.faculty = this.value;
         loadSchedules();
     });
     
-    document.getElementById('roomFilter')?.addEventListener('change', function() {
+    document.getElementById('roomFilter').addEventListener('change', function() {
         currentFilters.room = this.value;
         loadSchedules();
     });
     
-    // Clear filters button
-    document.getElementById('clearFilters')?.addEventListener('click', clearAllFilters);
+    // Clear filters
+    document.getElementById('clearFilters').addEventListener('click', clearAllFilters);
     
-    // Add schedule button
-    document.getElementById('addScheduleBtn')?.addEventListener('click', openAddScheduleModal);
+    // Add schedule
+    document.getElementById('addScheduleBtn').addEventListener('click', openAddScheduleModal);
     
-    // Save schedule button
-    document.getElementById('saveScheduleBtn')?.addEventListener('click', saveSchedule);
+    // Save schedule
+    document.getElementById('saveScheduleBtn').addEventListener('click', saveSchedule);
+    
+    // Modal hidden event
+    document.getElementById('scheduleModal').addEventListener('hidden.bs.modal', function() {
+        // Reset form
+        document.getElementById('scheduleForm').reset();
+        document.getElementById('scheduleId').value = '';
+    });
 }
 
-// Load schedules with current filters
+// Load schedules
 function loadSchedules() {
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const noResults = document.getElementById('noResults');
-    const schedulesContainer = document.getElementById('schedulesContainer');
+    console.log('Loading schedules with filters:', currentFilters);
     
-    // Show loading, hide others
-    if (loadingSpinner) loadingSpinner.style.display = 'block';
-    if (noResults) noResults.style.display = 'none';
-    if (schedulesContainer) schedulesContainer.innerHTML = '';
+    // Show loading
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('noResults').style.display = 'none';
+    document.getElementById('schedulesContainer').innerHTML = '';
     
-    // Build query parameters
-    const queryParams = new URLSearchParams(currentFilters);
+    // Build query
+    let query = 'action=get_schedules';
+    if (currentFilters.course !== 'all') query += '&course=' + currentFilters.course;
+    if (currentFilters.day !== 'all') query += '&day=' + currentFilters.day;
+    if (currentFilters.faculty !== 'all') query += '&faculty=' + currentFilters.faculty;
+    if (currentFilters.room !== 'all') query += '&room=' + currentFilters.room;
+    if (currentFilters.search) query += '&search=' + encodeURIComponent(currentFilters.search);
     
-    // Make AJAX request
-    fetch(`ajax/schedule_ajax.php?action=get_schedules&${queryParams}`)
+    fetch('ajax/schedule_ajax.php?' + query)
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('Network response was not ok: ' + response.status);
             }
-            return response.json();
+            return parseJsonSafe(response);
         })
-        .then(data => {
-            if (loadingSpinner) loadingSpinner.style.display = 'none';
-            
+        .then(result => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            if (!result.ok) {
+                console.error('Non-JSON response from server while loading schedules:', result.text);
+                showError('Server error while loading schedules: ' + result.text);
+                return;
+            }
+            const data = result.data;
+            console.log('Schedules data received:', data);
             if (data.success && data.schedules && Object.keys(data.schedules).length > 0) {
-                // Group schedules by course section
-                for (const [courseSectionId, schedules] of Object.entries(data.schedules)) {
-                    if (schedules.length > 0) {
-                        const courseSectionName = schedules[0].CourseSection;
-                        const scheduleTable = createScheduleTable(courseSectionName, schedules);
-                        if (schedulesContainer) schedulesContainer.appendChild(scheduleTable);
-                    }
-                }
+                displaySchedules(data.schedules);
             } else {
-                if (noResults) {
-                    noResults.style.display = 'block';
-                    noResults.innerHTML = `
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No schedules found.</p>
-                    `;
-                }
+                showNoResults();
             }
         })
         .catch(error => {
             console.error('Error loading schedules:', error);
-            if (loadingSpinner) loadingSpinner.style.display = 'none';
-            if (noResults) {
-                noResults.style.display = 'block';
-                noResults.innerHTML = `
-                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                    <p class="text-danger">Error loading schedules. Please try again.</p>
-                    <small class="text-muted">Error: ${error.message}</small>
-                `;
-            }
+            document.getElementById('loadingSpinner').style.display = 'none';
+            showError('Error loading schedules: ' + error.message);
         });
 }
 
-// Create schedule table HTML
-function createScheduleTable(courseSectionName, schedules) {
-    const container = document.createElement('div');
-    container.className = 'mb-5';
+// Display schedules - FIXED VERSION
+function displaySchedules(schedules) {
+    const container = document.getElementById('schedulesContainer');
+    container.innerHTML = '';
     
-    // Title
-    const title = document.createElement('h5');
-    title.className = 'fw-bold mt-4';
-    title.textContent = `Schedule for ${courseSectionName}`;
-    container.appendChild(title);
+    // First, flatten all schedules to group by course section
+    const allSchedules = [];
+    for (const [courseId, courseSchedules] of Object.entries(schedules)) {
+        allSchedules.push(...courseSchedules);
+    }
     
-    // Table container
-    const tableContainer = document.createElement('div');
-    tableContainer.className = 'table-responsive';
-    tableContainer.style.maxHeight = '500px';
-    tableContainer.style.overflowY = 'auto';
+    // Group schedules by CourseSection for display
+    const groupedSchedules = {};
     
-    // Table
-    const table = document.createElement('table');
-    table.className = 'table table-hover align-middle table-borderless border';
-    
-    // Table header
-    const thead = document.createElement('thead');
-    thead.className = 'table-light sticky-top sched-thead';
-    thead.innerHTML = `
-        <tr>
-            <th>CODE</th>
-            <th>COURSE DESCRIPTION</th>
-            <th>DAY</th>
-            <th>START TIME</th>
-            <th>END TIME</th>
-            <th>ROOM</th>
-            <th>FACULTY</th>
-            <th>ACTION</th>
-        </tr>
-    `;
-    table.appendChild(thead);
-    
-    // Table body
-    const tbody = document.createElement('tbody');
-    schedules.forEach(schedule => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${schedule.Code}</td>
-            <td>${schedule.Description || ''}</td>
-            <td>${schedule.Day}</td>
-            <td>${schedule.Start_time}</td>
-            <td>${schedule.End_time}</td>
-            <td>${schedule.Room_code}</td>
-            <td>${schedule.Faculty_name}</td>
-            <td class="text-center">
-                <button class="btn btn-success btn-sm me-1 edit-btn" data-id="${schedule.Schedule_id}">
-                    <i class="fas fa-edit me-1"></i>Edit
-                </button>
-                <button class="btn btn-danger btn-sm delete-btn" data-id="${schedule.Schedule_id}">
-                    <i class="fas fa-trash me-1"></i>Delete
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
+    allSchedules.forEach(schedule => {
+        const courseSection = schedule.CourseSection || 'Uncategorized';
+        if (!groupedSchedules[courseSection]) {
+            groupedSchedules[courseSection] = [];
+        }
+        
+        // Avoid duplicates (same schedule might appear multiple times if multiple filters match)
+        const exists = groupedSchedules[courseSection].some(s => 
+            s.Schedule_id === schedule.Schedule_id
+        );
+        
+        if (!exists) {
+            groupedSchedules[courseSection].push(schedule);
+        }
     });
-    table.appendChild(tbody);
-    tableContainer.appendChild(table);
-    container.appendChild(tableContainer);
     
-    // Add event listeners to buttons
+    // If no grouping found, show all schedules in one table
+    if (Object.keys(groupedSchedules).length === 0 && allSchedules.length > 0) {
+        const table = createScheduleTable('All Schedules', allSchedules);
+        container.appendChild(table);
+    } else {
+        // Display grouped schedules
+        for (const [courseName, schedules] of Object.entries(groupedSchedules)) {
+            if (schedules.length > 0) {
+                // Sort schedules by day and time
+                schedules.sort((a, b) => {
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    const dayA = days.indexOf(a.Day);
+                    const dayB = days.indexOf(b.Day);
+                    
+                    if (dayA !== dayB) return dayA - dayB;
+                    return a.Start_time.localeCompare(b.Start_time);
+                });
+                
+                const table = createScheduleTable(courseName, schedules);
+                container.appendChild(table);
+            }
+        }
+    }
+    
+    // Add event listeners
     setTimeout(() => {
-        container.querySelectorAll('.edit-btn').forEach(btn => {
+        document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 editSchedule(this.dataset.id);
             });
         });
         
-        container.querySelectorAll('.delete-btn').forEach(btn => {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 deleteSchedule(this.dataset.id);
             });
         });
     }, 100);
-    
-    return container;
 }
 
-// Clear all filters
+// Create schedule table
+function createScheduleTable(courseName, schedules) {
+    const div = document.createElement('div');
+    div.className = 'card mb-4 shadow-sm schedule-card';
+    
+    // Card header with course name
+    const cardHeader = document.createElement('div');
+    cardHeader.className = 'card-header bg-white border-bottom-0 pb-0';
+    cardHeader.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">${courseName}</h5>
+            <span class="course-badge">${schedules.length} schedule(s)</span>
+        </div>
+    `;
+    div.appendChild(cardHeader);
+    
+    // Card body with table
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body pt-2';
+    
+    // Table
+    const table = document.createElement('table');
+    table.className = 'table table-hover align-middle mb-0';
+    table.innerHTML = `
+        <thead class="table-light">
+            <tr>
+                <th width="10%">CODE</th>
+                <th width="20%">DESCRIPTION</th>
+                <th width="8%">DAY</th>
+                <th width="10%">START TIME</th>
+                <th width="10%">END TIME</th>
+                <th width="10%">ROOM</th>
+                <th width="15%">FACULTY</th>
+                <th width="17%">ACTIONS</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${schedules.map(schedule => `
+                <tr>
+                    <td><strong>${schedule.Code}</strong></td>
+                    <td>${schedule.Description || '<span class="text-muted">No description</span>'}</td>
+                    <td><span class="badge bg-info">${schedule.Day}</span></td>
+                    <td>${formatTime(schedule.Start_time)}</td>
+                    <td>${formatTime(schedule.End_time)}</td>
+                    <td><span class="badge bg-secondary">${schedule.Room_code}</span></td>
+                    <td>${schedule.Faculty_name}</td>
+                    <td class="table-action-btns">
+                        <button class="btn btn-success btn-sm edit-btn" data-id="${schedule.Schedule_id}" title="Edit Schedule">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm delete-btn" data-id="${schedule.Schedule_id}" title="Delete Schedule">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('')}
+        </tbody>
+    `;
+    
+    cardBody.appendChild(table);
+    div.appendChild(cardBody);
+    return div;
+}
+
+// Format time for display
+function formatTime(timeString) {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+}
+
+// Clear filters
 function clearAllFilters() {
     document.getElementById('courseFilter').value = 'all';
     document.getElementById('dayFilter').value = 'all';
@@ -245,124 +312,300 @@ function clearAllFilters() {
     loadSchedules();
 }
 
-// Open modal to add new schedule
+// Open add modal
 function openAddScheduleModal() {
+    // Reset form
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleId').value = '';
     document.getElementById('scheduleModalLabel').textContent = 'Add New Schedule';
+    
+    // Clear course sections selection
+    const sections = document.getElementById('courseSections');
+    for (let option of sections.options) {
+        option.selected = false;
+    }
+    
     scheduleModal.show();
 }
 
-// Edit existing schedule
+// Edit schedule - FIXED VERSION
 function editSchedule(scheduleId) {
-    fetch(`ajax/schedule_ajax.php?action=get_schedule&id=${scheduleId}`)
-        .then(response => response.json())
-        .then(data => {
+    console.log('Editing schedule ID:', scheduleId);
+    
+    Swal.fire({
+        title: 'Loading schedule details...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch('ajax/schedule_ajax.php?action=get_schedule&id=' + scheduleId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return parseJsonSafe(response);
+        })
+        .then(result => {
+            Swal.close();
+            if (!result.ok) {
+                console.error('Non-JSON response while loading schedule:', result.text);
+                Swal.fire({ icon: 'error', title: 'Server Error', text: result.text });
+                return;
+            }
+            const data = result.data;
             if (data.success) {
+                console.log('Schedule data loaded:', data);
                 populateEditForm(data);
                 scheduleModal.show();
             } else {
-                alert('Error loading schedule details: ' + (data.message || 'Unknown error'));
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to load schedule details' });
             }
         })
         .catch(error => {
-            console.error('Error loading schedule details:', error);
-            alert('Error loading schedule details');
+            Swal.close();
+            console.error('Error loading schedule:', error);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load schedule details: ' + error.message });
         });
 }
 
-// Populate edit form with data
+// Populate edit form - FIXED VERSION
 function populateEditForm(data) {
-    document.getElementById('scheduleModalLabel').textContent = 'Edit Schedule';
-    document.getElementById('scheduleId').value = data.schedule.Schedule_id;
-    document.getElementById('subject').value = data.schedule.Subject_id;
-    document.getElementById('room').value = data.schedule.Room_id;
-    document.getElementById('faculty').value = data.schedule.Faculty_id;
-    document.getElementById('day').value = data.schedule.Day;
-    document.getElementById('startTime').value = data.schedule.Start_time;
-    document.getElementById('endTime').value = data.schedule.End_time;
+    console.log('Populating form with data:', data);
     
-    // Select course sections
-    const courseSelect = document.getElementById('courseSections');
-    Array.from(courseSelect.options).forEach(option => {
-        option.selected = data.course_sections.includes(parseInt(option.value));
-    });
+    document.getElementById('scheduleModalLabel').textContent = 'Edit Schedule';
+    
+    // Set basic fields
+    document.getElementById('scheduleId').value = data.schedule.Schedule_id || '';
+    document.getElementById('subject').value = data.schedule.Subject_id || '';
+    document.getElementById('room').value = data.schedule.Room_id || '';
+    document.getElementById('faculty').value = data.schedule.Faculty_id || '';
+    document.getElementById('day').value = data.schedule.Day || '';
+    document.getElementById('startTime').value = data.schedule.Start_time || '';
+    document.getElementById('endTime').value = data.schedule.End_time || '';
+    
+    // Set course sections - FIXED
+    const sections = document.getElementById('courseSections');
+    const courseSections = data.course_sections || [];
+    
+    console.log('Setting course sections:', courseSections);
+    
+    // Clear all selections first
+    for (let option of sections.options) {
+        option.selected = false;
+    }
+    
+    // Select the course sections from data
+    for (let option of sections.options) {
+        if (courseSections.includes(parseInt(option.value))) {
+            option.selected = true;
+        }
+    }
+    
+    // If no sections selected, show warning
+    if (courseSections.length === 0) {
+        console.warn('No course sections found for this schedule');
+    }
 }
 
-// Save schedule (add or update)
+// Save schedule - IMPROVED VERSION
 function saveSchedule() {
-    const scheduleForm = document.getElementById('scheduleForm');
-    const saveScheduleBtn = document.getElementById('saveScheduleBtn');
-    
-    if (!scheduleForm.checkValidity()) {
-        scheduleForm.reportValidity();
+    // Validate form
+    const form = document.getElementById('scheduleForm');
+    if (!form.checkValidity()) {
+        // Show validation messages
+        form.classList.add('was-validated');
+        // Focus on first invalid field
+        const invalidField = form.querySelector(':invalid');
+        if (invalidField) {
+            invalidField.focus();
+        }
         return;
     }
     
-    // Get form data
-    const formData = new FormData(scheduleForm);
+    // Get selected course sections
+    const sections = document.getElementById('courseSections');
+    const selectedSections = [];
+    for (let option of sections.selectedOptions) {
+        if (option.value) {
+            selectedSections.push(option.value);
+        }
+    }
+    
+    if (selectedSections.length === 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Please select at least one course section'
+        });
+        sections.focus();
+        return;
+    }
+    
+    // Validate time
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    
+    if (startTime >= endTime) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Time Error',
+            text: 'End time must be after start time'
+        });
+        document.getElementById('endTime').focus();
+        return;
+    }
+    
+    // Create form data
+    const formData = new FormData(form);
+    selectedSections.forEach(section => {
+        formData.append('course_sections[]', section);
+    });
     formData.append('action', 'save_schedule');
     
-    // Disable save button and show loading
-    saveScheduleBtn.disabled = true;
-    const originalText = saveScheduleBtn.innerHTML;
-    saveScheduleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    // Show loading
+    const saveBtn = document.getElementById('saveScheduleBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
     
-    // Send AJAX request
+    Swal.fire({
+        title: 'Saving Schedule...',
+        text: 'Please wait while we save your schedule',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Send request
     fetch('ajax/schedule_ajax.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        saveScheduleBtn.disabled = false;
-        saveScheduleBtn.innerHTML = originalText;
-        
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return parseJsonSafe(response);
+    })
+    .then(result => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        Swal.close();
+
+        if (!result.ok) {
+            console.error('Non-JSON response while saving schedule:', result.text);
+            Swal.fire({ icon: 'error', title: 'Server Error', text: result.text });
+            return;
+        }
+
+        const data = result.data;
         if (data.success) {
-            // Close modal and reload schedules
-            scheduleModal.hide();
-            loadSchedules();
-            alert(data.message);
+            Swal.fire({ icon: 'success', title: 'Success!', text: data.message, timer: 2000, showConfirmButton: false })
+            .then(() => {
+                scheduleModal.hide();
+                loadSchedules();
+            });
         } else {
-            alert(data.message || 'Error saving schedule');
+            Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to save schedule' });
         }
     })
     .catch(error => {
-        saveScheduleBtn.disabled = false;
-        saveScheduleBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        Swal.close();
         console.error('Error saving schedule:', error);
-        alert('Error saving schedule');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save schedule: ' + error.message });
     });
 }
 
 // Delete schedule
 function deleteSchedule(scheduleId) {
-    if (!confirm('Are you sure you want to delete this schedule?')) {
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('action', 'delete_schedule');
-    formData.append('schedule_id', scheduleId);
-    
-    fetch('ajax/schedule_ajax.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadSchedules();
-            alert(data.message);
-        } else {
-            alert(data.message || 'Error deleting schedule');
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Deleting...',
+                text: 'Please wait',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            const formData = new FormData();
+            formData.append('action', 'delete_schedule');
+            formData.append('schedule_id', scheduleId);
+            
+            fetch('ajax/schedule_ajax.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return parseJsonSafe(response);
+            })
+            .then(result => {
+                Swal.close();
+                if (!result.ok) {
+                    console.error('Non-JSON response while deleting schedule:', result.text);
+                    Swal.fire({ icon: 'error', title: 'Server Error', text: result.text });
+                    return;
+                }
+                const data = result.data;
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 1500, showConfirmButton: false })
+                    .then(() => {
+                        loadSchedules();
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to delete schedule' });
+                }
+            })
+            .catch(error => {
+                Swal.close();
+                console.error('Error deleting schedule:', error);
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to delete schedule: ' + error.message });
+            });
         }
-    })
-    .catch(error => {
-        console.error('Error deleting schedule:', error);
-        alert('Error deleting schedule');
     });
 }
 
-// Auto-refresh every 60 seconds (optional)
-setInterval(loadSchedules, 60000);
+// Show no results
+function showNoResults() {
+    const noResults = document.getElementById('noResults');
+    noResults.style.display = 'block';
+    noResults.innerHTML = `
+        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+        <p class="text-muted">No schedules found matching your criteria.</p>
+        <button class="btn btn-outline-primary mt-2" onclick="clearAllFilters()">
+            <i class="fas fa-times me-1"></i>Clear filters
+        </button>
+    `;
+}
+
+// Show error
+function showError(message) {
+    const noResults = document.getElementById('noResults');
+    noResults.style.display = 'block';
+    noResults.innerHTML = `
+        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+        <p class="text-danger">${message}</p>
+        <button class="btn btn-outline-primary mt-2" onclick="loadSchedules()">
+            <i class="fas fa-redo me-1"></i>Try Again
+        </button>
+    `;
+}

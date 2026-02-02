@@ -1,0 +1,12 @@
+[31-Jan-2026 15:02:41 Europe/Berlin] Uncaught exception: Call to a member function bind_param() on bool
+#0 C:\xampp\htdocs\CAPSTONE\Facility-Dashboard\ajax\schedule_ajax.php(70): saveSchedule(Object(mysqli))
+#1 {main}
+[31-Jan-2026 15:07:27 Europe/Berlin] MySQL prepare failed: Unknown column 'updated_at' in 'field list' -- SQL: UPDATE schedule SET 
+                            Subject_id = ?,
+                            Room_id = ?,
+                            Faculty_id = ?,
+                            Day = ?,
+                            Start_time = ?,
+                            End_time = ?,
+                            updated_at = NOW()
+                          WHERE Schedule_id = ?

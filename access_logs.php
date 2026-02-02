@@ -130,7 +130,7 @@
                         </button>
                     </div>
                     
-                    <button type="button" class="print" onclick="window.print()">
+                    <button type="button" class="print" id="printBtn">
                         <i class="fas fa-print me-2"></i>Print
                     </button>
                 </div>
@@ -189,10 +189,55 @@
         </div>
     </div>
 
+    <!-- Print Modal (Copied from your old code format) -->
+    <div class="print-modal" id="printModal" style="display: none;">
+        <div class="print-modal-content">
+            <h3>Print Access Logs</h3>
+            <div class="print-options">
+                <div class="print-option-group">
+                    <label for="printDateFrom">Date From</label>
+                    <input type="date" id="printDateFrom">
+                </div>
+                <div class="print-option-group">
+                    <label for="printDateTo">Date To</label>
+                    <input type="date" id="printDateTo">
+                </div>
+                <div class="print-option-group">
+                    <label for="printAccessType">Access Type</label>
+                    <select id="printAccessType">
+                        <option value="all">All Types</option>
+                        <option value="Entry">Entry</option>
+                        <option value="Exit">Exit</option>
+                    </select>
+                </div>
+                <div class="print-option-group">
+                    <label for="printStatus">Status</label>
+                    <select id="printStatus">
+                        <option value="all">All Status</option>
+                        <option value="granted">Granted</option>
+                        <option value="denied">Denied</option>
+                    </select>
+                </div>
+                <div class="print-option-group">
+                    <label for="printRoom">Room</label>
+                    <select id="printRoom">
+                        <option value="all">All Rooms</option>
+                    </select>
+                </div>
+            </div>
+            <div class="print-modal-buttons">
+                <button class="print-cancel" id="printCancel">Cancel</button>
+                <button class="print-confirm" id="printConfirm">Print</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden print section (only visible during printing) -->
+    <div id="printSection" style="display: none;"></div>
+
     <!-- JAVASCRIPT -->
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
-    <script src="js/access_logs.js"></script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -213,34 +258,87 @@
         const prevPageBtn = document.getElementById('prevPage');
         const nextPageBtn = document.getElementById('nextPage');
         const currentPageSpan = document.getElementById('currentPage');
+        const printBtn = document.getElementById('printBtn');
+        const printModal = document.getElementById('printModal');
+        const printCancel = document.getElementById('printCancel');
+        const printConfirm = document.getElementById('printConfirm');
+        const printSection = document.getElementById('printSection');
+        
+        // Print dialog elements
+        const printDateFrom = document.getElementById('printDateFrom');
+        const printDateTo = document.getElementById('printDateTo');
+        const printAccessType = document.getElementById('printAccessType');
+        const printStatus = document.getElementById('printStatus');
+        const printRoom = document.getElementById('printRoom');
 
         // State variables
         let currentPage = 1;
         const itemsPerPage = 50;
         let totalRecords = 0;
-        let isFiltered = false;
+        let currentFilters = {
+            status: 'all',
+            room: 'all',
+            access_type: 'all',
+            search: '',
+            from_date: '',
+            to_date: ''
+        };
 
         // Initialize
         loadRoomOptions();
+        loadPrintRoomOptions();
         loadLogs();
+        
+        // Set default dates for print modal (today and last 7 days)
+        const today = new Date();
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(today.getDate() - 7);
+        
+        printDateFrom.valueAsDate = oneWeekAgo;
+        printDateTo.valueAsDate = today;
 
         // Event Listeners
         searchBtn.addEventListener('click', function() {
             currentPage = 1;
+            currentFilters.search = searchInput.value;
+            console.debug('Search button clicked, search term:', currentFilters.search);
             loadLogs();
         });
 
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 currentPage = 1;
+                currentFilters.search = this.value.trim();
                 loadLogs();
             }
         });
 
+        // Debounce helper for real-time search
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
+        // Real-time search (debounced)
+        const debouncedRealtimeSearch = debounce(function() {
+            currentPage = 1;
+            currentFilters.search = searchInput.value.trim();
+            console.debug('Realtime search triggered:', currentFilters.search);
+            loadLogs();
+        }, 300); // 300ms delay after typing stops
+
+        searchInput.addEventListener('input', debouncedRealtimeSearch);
+
         applyFiltersBtn.addEventListener('click', function() {
             currentPage = 1;
-            isFiltered = true;
-            clearFiltersBtn.style.display = 'block';
+            currentFilters.status = statusFilter.value;
+            currentFilters.room = roomFilter.value;
+            currentFilters.access_type = typeFilter.value;
+            currentFilters.search = searchInput.value;
             loadLogs();
         });
 
@@ -250,9 +348,17 @@
             roomFilter.value = 'all';
             typeFilter.value = 'all';
             searchInput.value = '';
+            
+            currentFilters = {
+                status: 'all',
+                room: 'all',
+                access_type: 'all',
+                search: '',
+                from_date: '',
+                to_date: ''
+            };
+            
             currentPage = 1;
-            isFiltered = false;
-            clearFiltersBtn.style.display = 'none';
             loadLogs();
         });
 
@@ -270,6 +376,33 @@
                 currentPage++;
                 loadLogs();
             }
+        });
+
+        // Print functionality (Copied from your old code)
+        printBtn.addEventListener('click', function() {
+            printModal.style.display = 'flex';
+        });
+
+        printCancel.addEventListener('click', function() {
+            printModal.style.display = 'none';
+        });
+
+        printConfirm.addEventListener('click', function() {
+            // Get print options
+            const dateFrom = printDateFrom.value;
+            const dateTo = printDateTo.value;
+            const accessType = printAccessType.value;
+            const status = printStatus.value;
+            const room = printRoom.value;
+            
+            // Generate print view
+            generatePrintView(dateFrom, dateTo, accessType, status, room);
+            
+            // Close modal
+            printModal.style.display = 'none';
+            
+            // Print the document
+            window.print();
         });
 
         // Functions
@@ -298,6 +431,30 @@
                 });
         }
 
+        function loadPrintRoomOptions() {
+            fetch('ajax/get_rooms.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.rooms) {
+                        // Clear existing options except "All Rooms"
+                        while (printRoom.options.length > 1) {
+                            printRoom.remove(1);
+                        }
+                        
+                        // Add room options
+                        data.rooms.forEach(room => {
+                            const option = document.createElement('option');
+                            option.value = room;
+                            option.textContent = room;
+                            printRoom.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading print room options:', error);
+                });
+        }
+
         function loadLogs() {
             // Show loading, hide others
             loadingSpinner.style.display = 'block';
@@ -307,24 +464,36 @@
 
             // Get filter values
             const filters = {
-                status: statusFilter.value,
-                room: roomFilter.value,
-                access_type: typeFilter.value,
-                search: searchInput.value,
+                status: currentFilters.status,
+                room: currentFilters.room,
+                access_type: currentFilters.access_type,
+                search: currentFilters.search,
                 page: currentPage,
                 limit: itemsPerPage
             };
 
             // Build query string
             const queryParams = new URLSearchParams(filters).toString();
+            const url = `ajax/get_access_logs.php?${queryParams}`;
+            console.debug('Loading logs with filters:', filters, 'URL:', url);
 
             // Make AJAX request
-            fetch(`ajax/get_access_logs.php?${queryParams}`)
-                .then(response => response.json())
+            fetch(url)
+                .then(response => {
+                    console.debug('Fetch response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Server error response:', response.status, text);
+                            throw new Error('Server returned ' + response.status);
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.debug('Data received from get_access_logs:', data);
                     loadingSpinner.style.display = 'none';
 
-                    if (data.success && data.logs.length > 0) {
+                    if (data.success && data.logs && data.logs.length > 0) {
                         totalRecords = data.total;
                         recordCount.textContent = `${data.total} records`;
                         
@@ -368,9 +537,9 @@
                     noResults.style.display = 'block';
                     noResults.innerHTML = `
                         <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                        <p class="text-danger">Error loading access logs. Please try again.</p>
+                        <p class="text-danger">Error loading access logs. Please check console and try again.</p>
                     `;
-                    console.error('Error loading logs:', error);
+                    console.error('Error loading logs (fetch/parsing):', error);
                 });
         }
 
@@ -401,6 +570,152 @@
             }
         }
 
+        // Generate print view (Copied from your old code with adjustments)
+        function generatePrintView(dateFrom, dateTo, accessType, status, room) {
+            const printSection = document.getElementById('printSection');
+            printSection.innerHTML = '';
+            
+            // Filter data based on print options
+            const filteredData = filterDataForPrint(dateFrom, dateTo, accessType, status, room);
+            
+            // Create print header
+            const printHeader = document.createElement('div');
+            printHeader.className = 'print-header';
+            printHeader.innerHTML = `
+                <h2>Access Logs Report</h2>
+                <p>Lyceum of San Pedro</p>
+                <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            `;
+            printSection.appendChild(printHeader);
+            
+            // Create print filters info
+            const printFilters = document.createElement('div');
+            printFilters.className = 'print-filters';
+            
+            let filtersText = 'Filters: ';
+            const filters = [];
+            
+            if (dateFrom || dateTo) {
+                filters.push(`Date: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`);
+            }
+            if (accessType !== 'all') {
+                filters.push(`Access Type: ${accessType}`);
+            }
+            if (status !== 'all') {
+                filters.push(`Status: ${status}`);
+            }
+            if (room !== 'all') {
+                filters.push(`Room: ${room}`);
+            }
+            
+            if (filters.length === 0) {
+                filtersText += 'All records';
+            } else {
+                filtersText += filters.join(', ');
+            }
+            
+            printFilters.textContent = filtersText;
+            printSection.appendChild(printFilters);
+            
+            // Create print table
+            const printTable = document.createElement('table');
+            printTable.className = 'print-table';
+            
+            // Add table header
+            const tableHeader = document.createElement('thead');
+            tableHeader.innerHTML = `
+                <tr>
+                    <th>Log_id</th>
+                    <th>User_id</th>
+                    <th>Role</th>
+                    <th>Room</th>
+                    <th>Access_time</th>
+                    <th>Access_type</th>
+                    <th>Status</th>
+                </tr>
+            `;
+            printTable.appendChild(tableHeader);
+            
+            // Add table body with filtered rows
+            const tableBody = document.createElement('tbody');
+            
+            if (filteredData.length > 0) {
+                filteredData.forEach(row => {
+                    tableBody.appendChild(row);
+                });
+            } else {
+                const noDataRow = document.createElement('tr');
+                noDataRow.innerHTML = `<td colspan="7" style="text-align: center;">No records found matching the selected criteria</td>`;
+                tableBody.appendChild(noDataRow);
+            }
+            
+            printTable.appendChild(tableBody);
+            printSection.appendChild(printTable);
+            
+            // Create print footer
+            const printFooter = document.createElement('div');
+            printFooter.className = 'print-footer';
+            printFooter.innerHTML = `
+                <p>Total Records: ${filteredData.length}</p>
+                <p>Lyceum of San Pedro Facility Control System Access Logs</p>
+            `;
+            printSection.appendChild(printFooter);
+            
+            // Show the print section
+            printSection.style.display = 'block';
+        }
+
+        // Filter data for printing (Copied from your old code with adjustments)
+        function filterDataForPrint(dateFrom, dateTo, accessType, status, room) {
+            const rows = document.querySelectorAll('#logsTableBody tr');
+            const filteredRows = [];
+            
+            rows.forEach(row => {
+                if (row.style.display === 'none') return;
+                
+                const cells = row.cells;
+                if (!cells || cells.length < 7) return;
+                
+                const accessTime = cells[4].textContent;
+                const rowDate = new Date(accessTime.split(' ')[0]);
+                const rowAccessType = cells[5].textContent.toLowerCase();
+                const statusCell = cells[6].querySelector('.status');
+                const rowStatus = statusCell ? statusCell.textContent.toLowerCase().trim() : '';
+                const rowRoom = cells[3].textContent;
+                
+                // Date filter
+                let dateMatch = true;
+                if (dateFrom) {
+                    const fromDate = new Date(dateFrom);
+                    if (rowDate < fromDate) dateMatch = false;
+                }
+                if (dateTo) {
+                    const toDate = new Date(dateTo);
+                    toDate.setDate(toDate.getDate() + 1); // Include the end date
+                    if (rowDate >= toDate) dateMatch = false;
+                }
+                
+                // Access type filter
+                const accessTypeMatch = (accessType === 'all' || 
+                    rowAccessType === accessType.toLowerCase());
+                
+                // Status filter
+                const statusMatch = (status === 'all' || 
+                    rowStatus === status.toLowerCase());
+                
+                // Room filter
+                const roomMatch = (room === 'all' || rowRoom === room);
+                
+                if (dateMatch && accessTypeMatch && statusMatch && roomMatch) {
+                    // Create a deep clone of the row for printing
+                    const clonedRow = row.cloneNode(true);
+                    filteredRows.push(clonedRow);
+                }
+            });
+            
+            return filteredRows;
+        }
+
         // Auto-refresh every 30 seconds (optional)
         setInterval(loadLogs, 30000);
 
@@ -420,6 +735,142 @@
                 sidebar.classList.remove('show');
             });
         }
+        
+        // Add CSS for print section
+        const printCSS = document.createElement('style');
+        printCSS.textContent = `
+            .print-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 2000; /* Increased so it sits above Bootstrap's .sticky-top (z-index:1020) */
+            }
+            
+            .print-modal-content {
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                width: 500px;
+                max-width: 90%;
+            }
+            
+            .print-options {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin: 20px 0;
+            }
+            
+            .print-option-group {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .print-option-group label {
+                font-weight: 500;
+                margin-bottom: 5px;
+                color: #333;
+            }
+            
+            .print-option-group input,
+            .print-option-group select {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            
+            .print-modal-buttons {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            
+            .print-cancel,
+            .print-confirm {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: 500;
+            }
+            
+            .print-cancel {
+                background: #6c757d;
+                color: white;
+            }
+            
+            .print-confirm {
+                background: #28a745;
+                color: white;
+            }
+            
+            /* Print section styles */
+            #printSection {
+                display: none;
+                padding: 20px;
+            }
+            
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                
+                #printSection, #printSection * {
+                    visibility: visible;
+                }
+                
+                #printSection {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    background: white;
+                }
+                
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                
+                .print-filters {
+                    margin-bottom: 15px;
+                    font-size: 14px;
+                }
+                
+                .print-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                
+                .print-table th,
+                .print-table td {
+                    border: 1px solid #000;
+                    padding: 8px;
+                    text-align: left;
+                }
+                
+                .print-table th {
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }
+                
+                .print-footer {
+                    text-align: center;
+                    margin-top: 20px;
+                    font-size: 12px;
+                    color: #666;
+                }
+            }
+        `;
+        document.head.appendChild(printCSS);
     });
     </script>
 </body>

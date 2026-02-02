@@ -90,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- CSS -->
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>ROOMS</title>
 </head>
 
@@ -289,15 +290,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         });
 
-        // Delete Logic
+        // Delete Logic (using SweetAlert2)
         function confirmDeleteRoom(id, name) {
-            if (confirm(`Are you sure you want to delete ${name}?`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `<input type="hidden" name="delete_room" value="1"><input type="hidden" name="room_id" value="${id}">`;
-                document.body.appendChild(form);
-                form.submit();
-            }
+            Swal.fire({
+                title: `Delete ROOM ${name}?`,
+                text: "This action cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.innerHTML = `<input type="hidden" name="delete_room" value="1"><input type="hidden" name="room_id" value="${id}">`;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
         }
     </script>
 
@@ -308,6 +318,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
 
+
+    <?php if (isset($_SESSION['success_message'])): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: <?php echo json_encode($_SESSION['success_message']); ?>,
+            timer: 2500,
+            showConfirmButton: false
+        });
+    });
+    </script>
+    <?php unset($_SESSION['success_message']); endif; ?>
+
+    <?php if (isset($_SESSION['error_message'])): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: <?php echo json_encode($_SESSION['error_message']); ?>,
+            timer: 3000,
+            showConfirmButton: true
+        });
+    });
+    </script>
+    <?php unset($_SESSION['error_message']); endif; ?>
 
     <!-- JAVASCRIPT -->
     <script src="js/bootstrap.bundle.min.js"></script>

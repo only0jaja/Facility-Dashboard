@@ -1,4 +1,5 @@
 <?php
+session_start();
 include 'conn.php';
 
 // --- BACKEND LOGIC ---
@@ -17,14 +18,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $sql = "INSERT INTO users (Rfid_tag, F_name, L_name, Role, Status, courseSection_id) VALUES ('$rfid', '$fname', '$lname', '$role', '$status', $courseId)";
         }
-        mysqli_query($conn, $sql);
+        $res = mysqli_query($conn, $sql);
+        if ($res) {
+            if (!empty($id)) {
+                $_SESSION['success_message'] = 'User updated successfully!';
+            } else {
+                $_SESSION['success_message'] = 'User added successfully!';
+            }
+        } else {
+            $_SESSION['error_message'] = 'Database error: ' . mysqli_error($conn);
+        }
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
 
     if (isset($_POST['delete_user'])) {
-        $id = $_POST['user_id'];
-        mysqli_query($conn, "DELETE FROM users WHERE User_id=$id");
+        $id = intval($_POST['user_id']);
+        $res = mysqli_query($conn, "DELETE FROM users WHERE User_id=$id");
+        if ($res) {
+            $_SESSION['success_message'] = 'User deleted successfully!';
+        } else {
+            $_SESSION['error_message'] = 'Delete failed: ' . mysqli_error($conn);
+        }
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
@@ -48,6 +63,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS cou
     <!-- CSS -->
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>USERS</title>
 </head>
 
@@ -389,18 +405,55 @@ function toggleCourse() {
 }
 
 function deleteUser(id, fname, lname) {
-    if (confirm(`Delete ${fname} ${lname}?`)) {
-        const f = document.createElement('form');
-        f.method = 'POST';
-        f.innerHTML = `<input type="hidden" name="user_id" value="${id}"><input type="hidden" name="delete_user" value="1">`;
-        document.body.appendChild(f);
-        f.submit();
-    }
+    Swal.fire({
+        title: `Delete ${fname} ${lname}?`,
+        text: "This action cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.innerHTML = `<input type="hidden" name="user_id" value="${id}"><input type="hidden" name="delete_user" value="1">`;
+            document.body.appendChild(f);
+            f.submit();
+        }
+    });
 }
 </script>
 
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
+
+<?php if (isset($_SESSION['success_message'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: <?php echo json_encode($_SESSION['success_message']); ?>,
+        timer: 2500,
+        showConfirmButton: false
+    });
+});
+</script>
+<?php unset($_SESSION['success_message']); endif; ?>
+
+<?php if (isset($_SESSION['error_message'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: <?php echo json_encode($_SESSION['error_message']); ?>,
+        timer: 3500,
+        showConfirmButton: true
+    });
+});
+</script>
+<?php unset($_SESSION['error_message']); endif; ?>
 </body>
 
 </html>

@@ -1,11 +1,7 @@
-<?php
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'facility-dashboard');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-?>
 
+<?php 
+  include 'conn.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -16,10 +12,15 @@ if ($conn->connect_error) {
     <link rel="shortcut icon" href="img/loalogo.png" type="image/x-icon">
     <!-- ICON CDN FONT AWESOME -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <!-- SWEETALERT2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- CSS -->
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/bootstrap.min.css">
     <title>SCHEDULES</title>
+    <style>
+     
+    </style>
 </head>
 
 <body>
@@ -88,16 +89,16 @@ if ($conn->connect_error) {
         <!-- Header -->
         <div class="card shadow-sm mb-4">
             <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                <h3 class="fw-bold mb-0">Schedule</h3>
+                <h3 class="fw-bold mb-0">Schedule Management</h3>
 
-                <div class="input-group room-search">
+                <div class="input-group room-search" style="max-width: 400px;">
                     <span class="input-group-text bg-white">
                         <i class="fas fa-search"></i>
                     </span>
                     <input type="text" id="searchInput" class="form-control" 
-                           placeholder="Search by Code, Description, Faculty...">
-                    <button type="button" id="searchBtn" class="btn btn-outline-primary">
-                        <i class="fas fa-search"></i>
+                           placeholder="Search by Code, Description, Faculty, Room...">
+                    <button type="button" id="searchBtn">
+                       
                     </button>
                 </div>
             </div>
@@ -105,7 +106,7 @@ if ($conn->connect_error) {
         
         <!-- Filters Section -->
         <div class="row g-3 mb-4 align-items-center">
-            <div class="col-md-2">
+            <div class="col-md-3 col-lg-2">
                 <select class="form-select" id="courseFilter">
                     <option value="all" selected>All Course Sections</option>
                     <?php
@@ -117,7 +118,7 @@ if ($conn->connect_error) {
                     ?>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3 col-lg-2">
                 <select class="form-select" id="dayFilter">
                     <option value="all" selected>All Days</option>
                     <option value="Mon">Monday</option>
@@ -129,7 +130,7 @@ if ($conn->connect_error) {
                     <option value="Sun">Sunday</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3 col-lg-2">
                 <select class="form-select" id="facultyFilter">
                     <option value="all" selected>All Faculty</option>
                     <?php
@@ -142,7 +143,7 @@ if ($conn->connect_error) {
                     ?>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3 col-lg-2">
                 <select class="form-select" id="roomFilter">
                     <option value="all" selected>All Rooms</option>
                     <?php
@@ -154,11 +155,15 @@ if ($conn->connect_error) {
                     ?>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="secondary-btn w-100" id="clearFilters">Clear Filters</button>
+            <div class="col-md-6 col-lg-2">
+                <button class="secondary-btn w-100" id="clearFilters">
+                    <i class="fas fa-times me-1"></i> Clear Filters
+                </button>
             </div>
-            <div class="col-md-2">
-                <button class="main-btn w-100" id="addScheduleBtn">+ Add Schedule</button>
+            <div class="col-md-6 col-lg-2">
+                <button class="main-btn w-100" id="addScheduleBtn">
+                    <i class="fas fa-plus me-1"></i> Add Schedule
+                </button>
             </div>
         </div>
 
@@ -253,18 +258,23 @@ if ($conn->connect_error) {
                             
                             <div class="col-md-6">
                                 <label for="startTime" class="form-label">Start Time *</label>
-                                <input type="time" class="form-control" id="startTime" name="start_time" required>
+                                <div class="time-input-group">
+                                    <input type="time" class="form-control" id="startTime" name="start_time" required>
+                                    <!-- <span class="input-group-text"><i class="fas fa-clock"></i></span> -->
+                                </div>
                             </div>
                             
                             <div class="col-md-6">
                                 <label for="endTime" class="form-label">End Time *</label>
-                                <input type="time" class="form-control" id="endTime" name="end_time" required>
+                                <div class="time-input-group">
+                                    <input type="time" class="form-control" id="endTime" name="end_time" required>
+                                    <!-- <span class="input-group-text"><i class="fas fa-clock"></i></span> -->
+                                </div>
                             </div>
                             
                             <div class="col-12">
                                 <label for="courseSections" class="form-label">Course Sections *</label>
-                                <select class="form-select" id="courseSections" name="course_sections[]" multiple required>
-                                    <option value="">Select Course Sections</option>
+                                <select class="form-select" id="courseSections" name="course_sections[]" multiple required style="height: 150px;">
                                     <?php
                                     $courses_sql = "SELECT * FROM course_section ORDER BY CourseSection";
                                     $courses_result = $conn->query($courses_sql);
@@ -273,7 +283,10 @@ if ($conn->connect_error) {
                                     }
                                     ?>
                                 </select>
-                                <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple sections</small>
+                                <div class="multi-select-help">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Hold Ctrl (Windows) or Cmd (Mac) to select multiple sections
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -289,6 +302,8 @@ if ($conn->connect_error) {
     <?php $conn->close(); ?>
 
     <!-- JAVASCRIPT -->
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
     <script src="js/schedule.js"></script>
